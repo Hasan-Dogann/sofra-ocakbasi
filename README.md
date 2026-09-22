@@ -6,9 +6,7 @@ Kağızman, Kars'taki Sofra Ocakbaşı için mobil uyumlu restoran sitesi.
 
 Node.js 18 veya üzeri ile:
 
-```sh
-npm run dev
-```
+
 
 Adres: http://127.0.0.1:5180/
 
