@@ -1,0 +1,40 @@
+const video=document.querySelector('.hero-video');
+const pause=document.querySelector('.pause');
+const motion=matchMedia('(prefers-reduced-motion: reduce)');
+if(video && pause){
+let userPaused=motion.matches;
+function sync(){pause.textContent=video.paused?'▶':'Ⅱ';pause.setAttribute('aria-label',video.paused?'Videoyu oynat':'Videoyu duraklat')}
+async function playVideo(){try{await video.play()}catch{}sync()}
+video.muted=true;
+if(userPaused){video.autoplay=false;video.pause()}else playVideo();
+video.addEventListener('play',sync);video.addEventListener('pause',sync);
+pause.onclick=()=>{userPaused=!video.paused;if(userPaused)video.pause();else playVideo();sync()};
+motion.addEventListener('change',e=>{userPaused=e.matches;if(userPaused)video.pause();else playVideo()});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)video.pause();else if(!userPaused)playVideo()});
+sync();
+}
+const toggle=document.querySelector('.mobile-toggle');const nav=document.querySelector('nav');toggle.onclick=()=>{const open=nav.classList.toggle('open');toggle.setAttribute('aria-expanded',String(open));toggle.setAttribute('aria-label',open?'Menüyü kapat':'Menüyü aç');toggle.textContent=open?'×':'☰'};nav.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>{nav.classList.remove('open');toggle.setAttribute('aria-expanded','false');toggle.setAttribute('aria-label','Menüyü aç');toggle.textContent='☰'}));document.addEventListener('keydown',e=>{if(e.key==='Escape'&&nav.classList.contains('open'))toggle.click()});if('IntersectionObserver'in window){const observer=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');observer.unobserve(e.target)}}),{threshold:.1});document.querySelectorAll('.reveal').forEach(e=>observer.observe(e));}else document.querySelectorAll('.reveal').forEach(e=>e.classList.add('visible'));document.querySelector('#year').textContent=new Date().getFullYear();
+
+// Shared image viewer: native dialog provides focus trapping and Escape support.
+const lightbox=document.querySelector('.lightbox');
+let imageTrigger;
+function openImage(src,caption,trigger){imageTrigger=trigger;lightbox.querySelector('img').src=src;lightbox.querySelector('img').alt=caption;lightbox.querySelector('p').textContent=caption;lightbox.showModal();document.body.classList.add('modal-open')}
+document.querySelectorAll('[data-image]').forEach(button=>button.addEventListener('click',()=>openImage(button.dataset.image,button.dataset.caption,button)));
+document.querySelectorAll('.food-image').forEach(container=>{const img=container.querySelector('img');const button=document.createElement('button');button.className='image-open';button.setAttribute('aria-label',img.alt+': görseli büyüt');container.replaceWith(button);button.append(container);button.onclick=()=>openImage(img.src,img.alt,button)});
+if(lightbox){lightbox.querySelector('.close-lightbox').onclick=()=>lightbox.close();lightbox.addEventListener('click',e=>{if(e.target===lightbox)lightbox.close()});lightbox.addEventListener('close',()=>{document.body.classList.remove('modal-open');imageTrigger?.focus()})}
+const carousel=document.querySelector('.menu-carousel');
+if(carousel){const slides=[...carousel.querySelectorAll('.menu-slide')];const pauseButton=carousel.querySelector('.carousel-pause');let current=0,stopped=motion.matches,interval;
+function render(step){current=(current+step+slides.length)%slides.length;slides.forEach((slide,i)=>{slide.hidden=i!==current})}
+function schedule(){clearInterval(interval);if(!stopped&&!document.hidden&&!carousel.contains(document.activeElement)&&!lightbox.open)interval=setInterval(()=>{if(!lightbox.open)render(1)},2000)}
+function syncPause(){pauseButton.textContent=stopped?'▶':'Ⅱ';pauseButton.setAttribute('aria-label',stopped?'Slayt gösterisini oynat':'Slayt gösterisini duraklat')}
+carousel.querySelector('.carousel-prev').onclick=()=>{render(-1);schedule()};carousel.querySelector('.carousel-next').onclick=()=>{render(1);schedule()};pauseButton.onclick=()=>{stopped=!stopped;syncPause();schedule()};carousel.addEventListener('focusin',()=>clearInterval(interval));carousel.addEventListener('focusout',()=>setTimeout(schedule,0));document.addEventListener('visibilitychange',schedule);lightbox.addEventListener('close',schedule);motion.addEventListener('change',e=>{stopped=e.matches;syncPause();schedule()});let touchX;carousel.addEventListener('touchstart',e=>{touchX=e.changedTouches[0].clientX;clearInterval(interval)},{passive:true});carousel.addEventListener('touchend',e=>{const delta=e.changedTouches[0].clientX-touchX;if(Math.abs(delta)>60)render(delta<0?1:-1);schedule()},{passive:true});syncPause();schedule();}
+
+const categoryCarousel=document.querySelector('.home-menu-carousel');
+if(categoryCarousel){const track=categoryCarousel.querySelector('.category-track');const cards=[...track.children];const pauseButton=categoryCarousel.querySelector('.category-pause');let timer,slideAnimation,paused=motion.matches;
+const visible=()=>innerWidth<=550?1:innerWidth<=850?2:3;
+const step=()=>cards[1].offsetLeft-cards[0].offsetLeft;
+function position(){const first=Math.round(track.scrollLeft/step());categoryCarousel.querySelector('.category-position').textContent=String(first+1).padStart(2,'0')+'–'+String(Math.min(first+visible(),cards.length)).padStart(2,'0')+' / 07'}
+function advance(direction){const max=cards.length-visible();const current=Math.round(track.scrollLeft/step());let next=direction>0?(current>=max?0:Math.min(max,current+visible())):(current<=0?max:Math.max(0,current-visible()));cancelAnimationFrame(slideAnimation);const from=track.scrollLeft,to=next*step();if(motion.matches){track.scrollLeft=to;return}const started=performance.now();function animate(now){const progress=Math.min((now-started)/850,1);track.style.opacity=String(1-Math.sin(Math.PI*progress)*.35);const eased=progress<.5?4*progress*progress*progress:1-Math.pow(-2*progress+2,3)/2;track.scrollLeft=from+(to-from)*eased;if(progress<1)slideAnimation=requestAnimationFrame(animate);else {track.style.scrollSnapType='';track.style.opacity=''}}track.style.scrollSnapType='none';slideAnimation=requestAnimationFrame(animate)}
+function schedule(){clearInterval(timer);if(!paused&&!document.hidden&&!categoryCarousel.contains(document.activeElement))timer=setInterval(()=>advance(1),2500)}
+categoryCarousel.querySelector('.category-next').onclick=()=>{advance(1);schedule()};categoryCarousel.querySelector('.category-prev').onclick=()=>{advance(-1);schedule()};pauseButton.onclick=()=>{paused=!paused;pauseButton.textContent=paused?'▶':'Ⅱ';pauseButton.setAttribute('aria-label',paused?'Otomatik geçişi başlat':'Otomatik geçişi duraklat');schedule()};track.addEventListener('scroll',position,{passive:true});categoryCarousel.addEventListener('focusin',()=>clearInterval(timer));categoryCarousel.addEventListener('focusout',()=>setTimeout(schedule,0));track.addEventListener('touchstart',()=>{clearInterval(timer);cancelAnimationFrame(slideAnimation);track.style.opacity='';track.style.scrollSnapType=''}, {passive:true});track.addEventListener('touchend',schedule,{passive:true});document.addEventListener('visibilitychange',schedule);window.addEventListener('resize',()=>{cancelAnimationFrame(slideAnimation);track.style.opacity='';track.style.scrollSnapType='';position()});motion.addEventListener('change',e=>{paused=e.matches;pauseButton.textContent=paused?'▶':'Ⅱ';schedule()});if(paused){pauseButton.textContent='▶';pauseButton.setAttribute('aria-label','Otomatik geçişi başlat')}position();schedule();}
+function openMenuCategory(){const id=location.hash.slice(1);const category=document.getElementById(id);if(category?.matches('details.menu-category')){category.open=true;category.scrollIntoView({block:'start'})}}window.addEventListener('hashchange',openMenuCategory);openMenuCategory();
